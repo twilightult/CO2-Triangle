@@ -1,4 +1,4 @@
-name: Free Build and Pseudo-Sign
+name: build
 
 on:
   push:
@@ -9,26 +9,29 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Install ldid
-        run: brew install ldid
 
       - name: Compile
         run: |
-          xcrun -sdk iphoneos clang -O0 -arch arm64e \
-            -framework Foundation -framework UIKit -framework Metal -framework MetalKit \
-            triangle.m -o Triangle
-
-      - name: Package and Sign
-        run: |
           mkdir -p Payload/Triangle.app
-          mv Triangle Payload/Triangle.app/
+          xcrun -sdk iphoneos clang -arch arm64 \
+            -miphoneos-version-min=14.0 \
+            -fobjc-arc -O2 \
+            -framework UIKit -framework Metal -framework MetalKit -framework QuartzCore \
+            triangle.m -o Payload/Triangle.app/Triangle
           cp Info.plist Payload/Triangle.app/
-          ldid -S Payload/Triangle.app/Triangle
-          zip -r Triangle.ipa Payload/
+          chmod +x Payload/Triangle.app/Triangle
+
+      - name: Verify
+        run: |
+          file Payload/Triangle.app/Triangle
+          ls -la Payload/Triangle.app/
+
+      - name: Package
+        run: |
+          cd Payload && zip -qry ../Triangle.ipa Triangle.app
 
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Triangle-Free-IPA
+          name: Triangle-ipa
           path: Triangle.ipa
